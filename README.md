@@ -1,6 +1,148 @@
 # devops-netology
 DevOps course in Netology, homework
 -------------------------------------------
+Домашнее задание к занятию "3.2. Работа в терминале, лекция 2"
+    1. Какого типа команда cd? Попробуйте объяснить, почему она именно такого типа; опишите ход своих мыслей, если считаете что она могла бы быть другого типа.
+ОТВЕТ:
+	Команда cd - встроенная команда оболочки, аббревиатура от change directory (сменить директорию) С помощью данной команды происходит изменение текущей директории:
+	dmin@devops:~$ type cd
+	cd is a shell builtin
+
+    2. Какая альтернатива без pipe команде grep <some_string> <some_file> | wc -l? man grep поможет в ответе на этот вопрос. Ознакомьтесь с документом о других подобных некорректных вариантах использования pipe.
+ОТВЕТ:
+	admin@devops:~/.git/devops-netology$ grep dfg TEST | wc -l
+	6
+	admin@devops:~/.git/devops-netology$ grep dfg TEST -c
+	6
+	admin@devops:~/.git/devops-netology$ cat TEST
+	kdfg
+	dfg
+	dfg
+	dfg
+	dfghgfdhjg
+	dfg
+	hfg
+
+    3. Какой процесс с PID 1 является родителем для всех процессов в вашей виртуальной машине Ubuntu 20.04?
+ОТВЕТ:
+	процесс с PID 1 - systemd
+	admin@devops:~/.git/devops-netology$ pstree -p
+systemd(1)─┬─accounts-daemon(21042)─┬─{accounts-daemon}(21043)
+           │                        └─{accounts-daemon}(21045)
+           ├─atd(584)
+
+    4. Как будет выглядеть команда, которая перенаправит вывод stderr ls на другую сессию терминала?
+ОТВЕТ:
+	admin@devops:~/.git/devops-netology$ who -m
+	admin pts/1        2022-01-10 21:26 (91.224.232.103)
+	Вызов из pts/1:
+	admin@devops:~/.git/devops-netology$ sudo ls -l /etc/nginx 2>/dev/pts/0
+	Вывод из pts/0:
+	admin@devops:~/.git/devops-netology$ who -m
+	admin pts/0        2022-01-10 21:21 (91.224.232.103)
+	admin@devops:~/.git/devops-netology$ ls: cannot access '/etc/nginx': No such file or directory
+	
+    5. Получится ли одновременно передать команде файл на stdin и вывести ее stdout в другой файл? Приведите работающий пример.
+ОТВЕТ:
+	Да, получится:
+	admin@devops:~/.git/devops-netology$ cat < TEST
+	dfg
+	dfg
+	dfg
+	gfdgdf
+	dhfdgfh
+	admin@devops:~/.git/devops-netology$ cat < TEST > TEST_OUT
+	admin@devops:~/.git/devops-netology$ cat TEST_OUT
+	dfg
+	dfg
+	dfg
+	gfdgdf
+	dhfdgfh
+
+    6. Получится ли находясь в графическом режиме, вывести данные из PTY в какой-либо из эмуляторов TTY? Сможете ли вы наблюдать выводимые данные?
+ОТВЕТ:
+	Да, получится. Для этого, например, надо в графическом интерфейсе запустить Terminal (для ubuntu 18.04) и в запущенном терминале выполнить sudo echo "HI" > /dev/pts/0
+
+    7. Выполните команду bash 5>&1. К чему она приведет? Что будет, если вы выполните echo netology > /proc/$$/fd/5? Почему так происходит?
+ОТВЕТ: 
+	admin@devops:~/.git/devops-netology$ bash 5>&1 - команда запустит экземпляр bash с дескриптором 5 и перенаправит его в stdout
+	admin@devops:~/.git/devops-netology$ echo netology > /proc/$$/fd/5 - выведет слово netology в файловый дескриптор с номером 5, который ранее был перенаправлен в stdout текущего шелла. $$ - подставит PID текущего шелла 
+	
+    8. Получится ли в качестве входного потока для pipe использовать только stderr команды, не потеряв при этом отображение stdout на pty? Напоминаем: по умолчанию через pipe передается только stdout команды слева от | на stdin команды справа. Это можно сделать, поменяв стандартные потоки местами через промежуточный новый дескриптор, который вы научились создавать в предыдущем вопросе.
+ОТВЕТ:
+	dmin@devops:~/.git/devops-netology$ ls -l /root/ 5>&2 2>&1 1>&5 | grep deni
+	ls: cannot open directory '/root/': Permission denied
+	Создали новый дескриптор 5, перенаправили его в stderr (5>&2), далее stderr перенаправили в stdout (2>&1), stdout перенаправили в дескриптор 5 
+
+    9. Что выведет команда cat /proc/$$/environ? Как еще можно получить аналогичный по содержанию вывод?
+ОТВЕТ:
+	Команда выведет переменные окружения в неформатированном виде (одной строкой без разделителей и без символа возврата каретки в конце строки )
+	Переменные окружения можно также посмотреть командами (но уже с построчным разделением)
+	printenv
+	env
+
+    10. Используя man, опишите что доступно по адресам /proc/<PID>/cmdline, /proc/<PID>/exe.
+ОТВЕТ:
+	- /proc/[pid]/cmdline (в моем случае строка 236 man'а) - выведет команду, породившую процесс с данным PID со всеми аргументами (аргументы будут выведены с "нулевым" разделителем, т.е. вывод слипнется в одну строку), при условии если процесс не "зомби".
+              This read-only file holds the  complete  command  line  for  the
+              process,  unless  the  process is a zombie.  In the latter case,
+              there is nothing in this file: that is, a read on this file will
+              return  0 characters.  The command-line arguments appear in this
+              file as a set of strings separated by null bytes ('\0'), with  a
+              further null byte after the last string.
+	-  /proc/[pid]/exe (в моем случае строка 302 man'а) - это файл со ссылкой на файл, который вызвал программу с данным PID'ом:
+	admin@devops:~/.git/devops-netology$ ps au
+	USER       PID %CPU %MEM    VSZ   RSS TTY      STAT START   TIME COMMAND
+	root       662  0.0  0.0  78768  3620 tty1     Ss    2021   0:00 /bin/login -p -
+	admin 20297  0.1  0.0  56232  9968 pts/0    S+   22:11   0:03 vi README.md
+	admin 20484  0.0  0.0  39672  3460 pts/1    R+   22:41   0:00 ps au
+	admin@devops:~/.git/devops-netology$ file /proc/20297/exe
+	/proc/20297/exe: symbolic link to /usr/bin/vim.basic
+
+              Under Linux 2.2 and later, this file is a symbolic link contain‐
+              ing  the actual pathname of the executed command.  This symbolic
+              link can be dereferenced normally; attempting to  open  it  will
+              open  the  executable.  You can even type /proc/[pid]/exe to run
+              another copy of the same executable that is being run by process
+              [pid].   If  the  pathname  has been unlinked, the symbolic link
+              will contain the string '(deleted)'  appended  to  the  original
+              pathname.  In a multithreaded process, the contents of this sym‐
+              bolic link are not available if the main thread has already ter‐
+              minated (typically by calling pthread_exit(3)).
+
+    11. Узнайте, какую наиболее старшую версию набора инструкций SSE поддерживает ваш процессор с помощью /proc/cpuinfo.
+ОТВЕТ:
+	sse2
+	admin@devops:~/.git/devops-netology$ grep sse /proc/cpuinfo                  flags   : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc nopl xtopology cpuid tsc_known_freq pni cx16 x2apic hypervisor lahf_lm cpuid_fault pti
+flags   : fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush mmx fxsr sse sse2 ht syscall nx lm constant_tsc nopl xtopology cpuid tsc_known_freq pni cx16 x2apic hypervisor lahf_lm cpuid_fault pti
+
+    12. При открытии нового окна терминала и vagrant ssh создается новая сессия и выделяется pty. Это можно подтвердить командой tty, которая упоминалась в лекции 3.2. Однако:
+
+    vagrant@netology1:~$ ssh localhost 'tty'
+    not a tty
+
+ Почитайте, почему так происходит, и как изменить поведение.
+ОТВЕТ:
+	Так происходит потому что для ssh подключения создается псевдо-терминальная сессия, а не непосредственное локальное терминальное подключение (Взял тут: https://stackoverflow.com/questions/4426280/what-do-pty-and-tty-mean). Псевдотерминал - это что-то, что выступает в роли термианала, но передает входные/выходные данные другой программе. 
+	Такое поведение, например важно при выполнении скриптов, запущенных через ssh подключение, чтобы они не ждали бесконечно пользовательского ввода на tty, который при удаленном подключении недоступен. 
+	Изменить поведение можно, добавив ключ -t при подключении по ssh, но так стОит делать с осторожностью.
+
+    13. Бывает, что есть необходимость переместить запущенный процесс из одной сессии в другую. Попробуйте сделать это, воспользовавшись reptyr. Например, так можно перенести в screen процесс, который вы запустили по ошибке в обычной SSH-сессии.
+ОТВЕТ:
+	Получилось сделать:
+	1 - apt install reptyr
+	2 - Открыл ssh подключение к серверу и выполнил команду admin@devops:~$ sleep 3600. Окно со спящим процессом остается висеть
+	3 - Открыл новое ssh подключение к этому же серверу, выполнил команду admin@devops:~$ ps au | grep sleep
+	    admin  1006  0.0  0.0   7476   768 pts/0    S+   23:10   0:00 sleep 3600 - нашел PID моего "спящего" процесса,
+	4 - admin@devops:~$ sudo reptyr -T 1006 - переключился в сессию, в которой запущена команда sleep 3600, если в этом окне ssh подкдлючения прервать выполнение команды Ctrl^C. Теперь если в окне первого подключения по ssh, выполненного в п.2 попробовать осущствить какой-нибудь ввод, или прерывание процесса выполнить, то выдастся сообщение, что эта сессия не существует, или перехвачена
+
+    14. sudo echo string > /root/new_file не даст выполнить перенаправление под обычным пользователем, так как перенаправлением занимается процесс shell'а, который запущен без sudo под вашим пользователем. Для решения данной проблемы можно использовать конструкцию echo string | sudo tee /root/new_file. Узнайте что делает команда tee и почему в отличие от sudo echo команда с sudo tee будет работать.
+ОТВЕТ:
+	Команда echo осуществляет только вывод в stdout и не ожидает ничего из stdin. Команда tee из описания man'а читает из stdin и пишет в stdout и файлы. Таким образом выполнение команды echo string передаст в stdout слово "string", которое по конвейеру (|) будет передано на вход команде tee, которая уже будет запущена с правами root'а и уже с правами root'а будет осуществлена запись слова "string" в /root/new_file 
+
+-------------------------------------------
+
+
 Домашнее задание к занятию "3.1. Работа в терминале, лекция 1"
 1. Установите средство виртуализации Oracle VirtualBox.
 + Готово
